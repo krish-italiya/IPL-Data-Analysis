@@ -16,7 +16,7 @@ The 'matches.csv' dataset contains information about the IPL matches, including 
 
 ## Analysis
 
-The analysis is performed using Python and various data analysis libraries, including Pandas, NumPy, and Matplotlib. The code is contained in the `IPL_Data_Analysis.ipynb` Jupyter Notebook. The analysis consists of the following steps:
+The analysis is performed using Python and various data analysis libraries, including Pandas, NumPy, and Matplotlib and for visualization I used python library streamlit . The code is contained in the `app.py` python file . The analysis consists of the following steps:
 
 1. Data Loading and Cleaning: The datasets are loaded into Pandas DataFrames and cleaned to remove any missing or inconsistent data.
 
