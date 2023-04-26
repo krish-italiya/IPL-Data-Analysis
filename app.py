@@ -18,6 +18,7 @@ print(df.head())
 st.markdown("<h1 style='text-align:center;margin-bottom:30px'>IPL Data Analysis 2008 - 2019</h1>",unsafe_allow_html=True)
 
 df['date'] = np.where(df['date'].str.contains('/'), pd.to_datetime(df['date']), pd.to_datetime(df['date'], dayfirst=True))
+
 col1,col2,col23= st.columns(3)
 with col1:
     st.subheader("IPL trophies Won by teams")
@@ -91,12 +92,11 @@ with col5:
 with col6:
     @st.cache_data
     def toss_decisions():
-        fig = plt.figure()
-        matches_per_season = df.groupby('season').id.count()
-        toss_decision_percentage = df.groupby('season').toss_decision.value_counts().sort_index()
-        season = []
-        for i in range(2008,2020):
-            season.append(i)
+        # matches_per_season = df.groupby('season').id.count()
+        toss_decision_percentage = df.groupby('season').toss_decision.value_counts()
+        season = [i for i in range(2008,2020)]
+        # for i in range(2008,2020):
+        #     season.append(i)
         field = []
         bat = []
         for i in list(toss_decision_percentage.index):
@@ -108,6 +108,7 @@ with col6:
         print(season)
         print(bat)
         print(field)
+        fig = plt.figure()
         bat_plot = plt.bar(np.array(season)-0.2,bat,width=0.40,label='batting',ec='darkblue')
         bowl_plot = plt.bar(np.array(season)+0.2,field,width=0.40,label='fielding',ec='red')
         plt.legend()
@@ -321,7 +322,7 @@ with col14:
         team1_total = team_in1.groupby("over").sum()['batsman_runs']
     team1_total.sum()
     team1_wickets = team_in1.groupby("over").count().sum()['player_dismissed']
-    team1_wickets
+    # team1_wickets
     st.markdown("<h3 style='text-align:center'>{}</h3>".format(team_in1['batting_team'].unique().tolist()[0]),unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center'>Total Scored: {}/{}</h3>".format(team1_total.sum(),team1_wickets),unsafe_allow_html=True)
 
@@ -363,60 +364,57 @@ col31,col32,col33 = st.columns(3)
 with col31:
     @st.cache_data
     def top_hitters(year):
-        low = df.loc[df['season']==year]['id'].unique().min()
-        high = df.loc[df['season']==year]['id'].unique().max()
-        runs_by_player = dff.loc[(dff['match_id']>=low) & (dff['match_id']<=high)].groupby(['batsman']).sum()
-        top_15_hitter = runs_by_player.sort_values(by='batsman_runs').tail(15)
-        top_15_players = list(top_15_hitter.index)
-        top_15_runs = list(top_15_hitter['batsman_runs'])
+        year_wise_bowler = df[df['season']==year]['id'].tolist()
+        top_bowlers = dff[dff['match_id'].isin(year_wise_bowler)].groupby('batsman').sum().sort_values(by='batsman_runs',ascending=False)['batsman_runs']
+        top_batters = top_bowlers.head(15)
+        batters = top_batters.index.tolist()
+        runs_by_batters= top_batters.values.tolist()
+        # plt.barh()
         dct = {
-            'player':top_15_players,
-            'runs':top_15_runs
+            'batsman':batters,
+            'runs':runs_by_batters
         }
-        winner_2008 = pd.DataFrame(dct)
-        winner_2008 = winner_2008.astype({"player": str, "runs": int})
-        
+        DF = pd.DataFrame(dct).sort_values(by='runs')
         fig = plt.figure()
-        plt.barh('player','runs',data=winner_2008)
-        plt.title('Top 15 Players With Highest Runs Score')
-        plt.show()
+        plt.barh('batsman','runs',data=DF)
         st.pyplot(fig)
-        return top_15_players[14],top_15_runs[14],year
+        return batters[0],runs_by_batters[0],year
     
-    
-    slt_year = st.slider("Season",min_value=2008,max_value=2019,value=2008,key='key1')
+    slt_year = st.slider("Season",min_value=2008,max_value=2019,value=2008,key='key13')
     x,y,z = top_hitters(slt_year)
 
 
-with col32:
-    @st.cache_data
-    def orange_cap():
-        st.subheader("Orange Cap Holder in Season {}".format(z))
-        ids = df[df['season']==z]['id'].tolist()
-        matches_id = dff[dff['match_id'].isin(ids)]
-        sixes = matches_id[matches_id['batsman']==x].groupby(matches_id['batsman_runs']==6).count()['batsman_runs'][True]
-        fours = matches_id[matches_id['batsman']==x].groupby(matches_id['batsman_runs']==4).count()['batsman_runs'][True]
-        fifties = matches_id[matches_id['batsman']==x].groupby('match_id').sum().reset_index()
-        team = matches_id[matches_id['batsman']==x]['batting_team'].unique().tolist()[0]
-        fast_fifty = matches_id[matches_id['batsman']==x].groupby(['match_id','batting_team','bowling_team']).agg({'ball':'count','batsman_runs':'sum'})
-        fast_fifty.reset_index(inplace=True)
-        fast_fifty['diff'] = fast_fifty['batsman_runs'].sub(fast_fifty['ball'])
-        fast_fifty.sort_values(by='diff',ascending=False,inplace=True)
-        fast_fifty = fast_fifty[fast_fifty['batsman_runs']>=50]
-        fast_fifty.drop(['diff'],axis=1,inplace=True)
-        fast_fifty.drop(['match_id'],axis=1,inplace=True)
-        # fast_fifty
-        st.write("> <h3>{}</h3> was the Orange Cap Holder in season {} ".format(x,z),unsafe_allow_html=True)
-        st.write("> He was Played for <b>{}</b> in season {}".format(team,z),unsafe_allow_html=True)
-        st.write("> {} scored <b>{}</b> runs in Season {}".format(x,y,z),unsafe_allow_html=True)
-        st.write("> {} scored <b>{} 6's</b> and <b>{} 4's</b> in season {}".format(x,sixes,fours,z),unsafe_allow_html=True)
-        st.write("> He also Scored <b>{}</b> Fifty and <b>{}</b> centuries in season {}".format(len(fifties[fifties['batsman_runs']>50]),len(fifties[fifties['batsman_runs']>99]),z),unsafe_allow_html=True)
-        return fast_fifty
-    fast_fifty = orange_cap()
-
 with col33:
-    st.subheader("Some of Top Innings Played By {} in Season {}".format(x,z))
-    st.table(fast_fifty)
+    st.subheader("Some Of top Innings Played by {} in Season {}".format(x,z))
+    year_wise_bowler = df[df['season']==z]['id'].tolist()
+    year_wise_bowler = dff[dff['match_id'].isin(year_wise_bowler)]
+    purple_cp = year_wise_bowler[year_wise_bowler['batsman']==x].groupby(['match_id','batting_team','bowling_team']).agg({'ball':'count','batsman_runs':'sum'}).reset_index()
+    purple_cp.sort_values(by='batsman_runs',ascending=False,inplace=True)
+    purple_cp = purple_cp[purple_cp['batsman_runs']>50]
+    purple_cp.drop(['match_id'],axis=1,inplace=True)
+    purple_cp.columns = ['Bowling Team','Batting Team','ball','Runs']
+    st.table(purple_cp)
+with col32:
+    st.subheader("Analysis of Orange Cap in Season {}".format(z))
+    ids = df[df['season']==slt_year]['id'].tolist()
+    matches_id = dff[dff['match_id'].isin(ids)]
+    sixes = matches_id[matches_id['batsman']==x].groupby(matches_id['batsman_runs']==6).count()['batsman_runs'][True]
+    fours = matches_id[matches_id['batsman']==x].groupby(matches_id['batsman_runs']==4).count()['batsman_runs'][True]
+    fifties = matches_id[matches_id['batsman']==x].groupby('match_id').sum().reset_index()
+    team = matches_id[matches_id['batsman']==x]['batting_team'].unique().tolist()[0]
+    fast_fifty = matches_id[matches_id['batsman']==x].groupby(['match_id','batting_team','bowling_team']).agg({'ball':'count','batsman_runs':'sum'})
+    fast_fifty.reset_index(inplace=True)
+    fast_fifty['diff'] = fast_fifty['batsman_runs'].sub(fast_fifty['ball'])
+    fast_fifty.sort_values(by='diff',ascending=False,inplace=True)
+    fast_fifty = fast_fifty[fast_fifty['batsman_runs']>=50]
+    fast_fifty.drop(['diff'],axis=1,inplace=True)
+    fast_fifty.drop(['match_id'],axis=1,inplace=True)
+    st.write("> <h3>{}</h3> was the Orange Cap Holder in season {} ".format(x,z),unsafe_allow_html=True)
+    st.write("> He was Played for <b>{}</b> in season {}".format(team,z),unsafe_allow_html=True)
+    st.write("> {} scored <b>{}</b> runs in Season {}".format(x,y,z),unsafe_allow_html=True)
+    st.write("> {} scored <b>{} 6's</b> and <b>{} 4's</b> in season {}".format(x,sixes,fours,z),unsafe_allow_html=True)
+    st.write("> He also Scored <b>{}</b> Fifty and <b>{}</b> centuries in season {}".format(len(fifties[fifties['batsman_runs']>50]),len(fifties[fifties['batsman_runs']>99]),z),unsafe_allow_html=True)
+    # st.table(fast_fifty)
     
 
 st.write("---")
@@ -426,7 +424,7 @@ with col36:
     @st.cache_data
     def year_wise_bowlers(year):
         year_wise_bowler = df[df['season']==year]['id'].tolist()
-        top_bowlers = dff[(dff['match_id']>=year_wise_bowler[0]) & (dff['match_id']<=year_wise_bowler[len(year_wise_bowler)-1])].groupby('bowler').count().sort_values(by='player_dismissed',ascending=False)['player_dismissed']
+        top_bowlers = dff[dff['match_id'].isin(year_wise_bowler)].groupby('bowler').count().sort_values(by='player_dismissed',ascending=False)['player_dismissed']
         top_bowlers = top_bowlers.head(15)
         bowlers = top_bowlers.index.tolist()
         wickets_by_bowlers= top_bowlers.values.tolist()
@@ -460,7 +458,6 @@ with col34:
     matches_id = dff[dff['match_id'].isin(ids)]
     team = matches_id[matches_id['bowler']==bowler]['bowling_team'].unique().tolist()[0]
     runs_given = year_wise_bowler.groupby(year_wise_bowler['bowler']==bowler).agg({'total_runs':'sum','player_dismissed':'count'})['total_runs'][True]
-    # runs_given
     st.subheader("Analysis of Purple Cap Holder in Season {}".format(seasn))
     st.write("> <h3>{}</h3> was the Purple Cap Holder in Season {}".format(bowler,seasn),unsafe_allow_html=True)
     st.write("> He Played for <b>{}</b> team in Season {}".format(team,seasn),unsafe_allow_html=True)
@@ -471,4 +468,3 @@ st.write('---')
 st.markdown("# <div style='text-align:center;'>Conclusion</div>",unsafe_allow_html=True)
 
 st.write("> I tried to analyze Datasets <a href='https://www.kaggle.com/datasets/patrickb1912/ipl-complete-dataset-20082020?select=IPL+Matches+2008-2020.csv'>matches.csv</a> and  <a href='https://www.kaggle.com/datasets/patrickb1912/ipl-complete-dataset-20082020?select=IPL+Matches+2008-2020.csv'>deliveries.csv</a> available on Kaggle",unsafe_allow_html=True)
-st.write("> I observed that in season 2017 in match of Mumbai Indians vs Delhi Daredevils Mumbai Indians won by 146 run which is Highest margin of victory")
